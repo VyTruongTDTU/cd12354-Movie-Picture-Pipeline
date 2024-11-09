@@ -1,4 +1,4 @@
-name: Backend CI Workflow
+name: Frontend CI Workflow
 
 on:
   pull_request:
