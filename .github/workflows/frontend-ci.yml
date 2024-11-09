@@ -7,6 +7,16 @@ on:
     paths:
       - 'starter/frontend/**'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select the environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
 
 jobs:
   lint:
@@ -51,6 +61,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: [lint, test]
+    environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
