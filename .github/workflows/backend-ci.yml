@@ -87,4 +87,4 @@ jobs:
             curl http://localhost:5000/movies
             docker stop
 
-        working-directory: starter/frontend
+        working-directory: starter/backend
