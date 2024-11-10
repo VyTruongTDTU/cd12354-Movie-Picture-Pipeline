@@ -65,6 +65,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
     needs: [lint, test]
     steps:
       - name: Checkout code
