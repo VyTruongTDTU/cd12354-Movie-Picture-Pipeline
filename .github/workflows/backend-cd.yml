@@ -75,7 +75,7 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
-          docker build -t mp-backend:${{ github.sha }} -f starter/backend/Dockerfile .
+          docker build -t mp-backend:${{ github.sha }} .
         working-directory: starter/backend
 
   deploy:
