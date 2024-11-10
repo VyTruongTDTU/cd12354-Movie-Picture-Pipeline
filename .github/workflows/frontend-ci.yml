@@ -75,7 +75,8 @@ jobs:
             username: ${{ secrets.DOCKER_USERNAME }}
             password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and run Docker image
         run: |
             docker build --build-arg=REACT_APP_MOVIE_API_URL=http://localhost:5000 --tag=mp-frontend:latest .
             docker run --name mp-frontend -p 3000:3000 -d mp-frontend
+        working-directory: starter/frontend
