@@ -105,8 +105,12 @@ jobs:
           docker tag mp-backend:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
         working-directory: starter/backend
+      
+      - name: Configure k8s cluster
+        run: aws eks update-kubeconfig --name uda-pro-4 --region us-east-1
 
       - name: Deploy to Kubernetes
         run: |
-          kubectl set image deployment/backend-deployment backend-container=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
-          kubectl apply -f k8s/backend-deployment.yaml
+          kustomize edit set image backend=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
+          kustomize build | kubectl apply -f -
+        working-directory: starter/backend/k8s
