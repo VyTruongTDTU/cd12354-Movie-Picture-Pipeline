@@ -113,7 +113,9 @@ jobs:
           export AWS_REGION=us-east-1
 
       - name: Verify kubectl authentication
-        run: kubectl get nodes
+        run: |
+          kubectl config view
+          kubectl get nodes
 
       - name: Deploy to Kubernetes
         run: |
