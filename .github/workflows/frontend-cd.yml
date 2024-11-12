@@ -64,6 +64,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build]
+    environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -73,7 +74,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -81,10 +82,19 @@ jobs:
 
       - name: Push Docker image to ECR
         run: |
-          docker tag ${{ secrets.DOCKER_USERNAME }}/mp-frontend:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/mp-frontend:${{ github.sha }}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/mp-frontend:${{ github.sha }}
+          docker build -t mp-frontend:${{ github.sha }} .
+          docker tag mp-frontend:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
+        working-directory: starter/frontend
+      
+      - name: Configure k8s cluster
+        run: aws eks --region us-east-1 update-kubeconfig --name my-cluster
+
+      - name: Verify kubectl authentication
+        run: kubectl get namespaces
 
       - name: Deploy to Kubernetes
         run: |
-          kubectl set image deployment/frontend-deployment frontend-container=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/mp-frontend:${{ github.sha }}
-          kubectl apply -f k8s/frontend-deployment.yaml
+          kustomize edit set image frontend=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
+          kustomize build | kubectl apply -f -
+        working-directory: starter/frontend/k8s
