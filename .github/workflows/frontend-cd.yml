@@ -94,7 +94,7 @@ jobs:
 
       - name: Push Docker image to ECR
         run: |
-          docker build --build-arg=REACT_APP_MOVIE_API_URL=http://localhost:5000 -t mp-frontend:${{ github.sha }} .
+          docker build --build-arg=REACT_APP_MOVIE_API_URL${{ vars.REACT_APP_MOVIE_API_URL }} -t mp-frontend:${{ github.sha }} .
           docker tag mp-frontend:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
         working-directory: starter/frontend
