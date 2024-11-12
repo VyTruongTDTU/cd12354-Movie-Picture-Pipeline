@@ -107,17 +107,10 @@ jobs:
         working-directory: starter/backend
       
       - name: Configure k8s cluster
-        run: |
-          aws eks update-kubeconfig --name uda-pro-4 --region us-east-1
-          export AWS_PROFILE=default
-          export AWS_REGION=us-east-1
-          kubectl get namespaces
+        run: aws eks --region us-east-1 update-kubeconfig --name my-cluster
 
       - name: Verify kubectl authentication
-        run: |
-          aws eks get-token
-          kubectl config view
-          kubectl get nodes
+        run: kubectl get namespaces
 
       - name: Deploy to Kubernetes
         run: |
