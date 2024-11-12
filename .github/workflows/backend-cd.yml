@@ -114,6 +114,7 @@ jobs:
 
       - name: Verify kubectl authentication
         run: |
+          aws eks get-token
           kubectl config view
           kubectl get nodes
 
