@@ -1,0 +1,112 @@
+name: Frontend CD Workflow
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'starter/frontend/**'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select the environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+            - production
+            - staging
+            - development
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+        - name: checkout code 
+          uses: actions/checkout@v2
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v2
+          with:
+            node-version: '18'
+        
+        - name: Install dependencies
+          run: npm ci
+          working-directory: starter/frontend
+
+        - name: Run lint
+          run: npm run lint
+          working-directory: starter/frontend
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: starter/frontend
+
+      - name: Run tests
+        run: npm test
+        working-directory: starter/frontend
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and run Docker image
+        run: |
+              docker build --build-arg=REACT_APP_MOVIE_API_URL=http://localhost:5000 --tag=mp-frontend:latest  .
+              docker run --name mp-frontend -p 3000:3000 -d mp-frontend
+        working-directory: starter/frontend
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Push Docker image to ECR
+        run: |
+          docker build --build-arg=REACT_APP_MOVIE_API_URL${{ vars.REACT_APP_MOVIE_API_URL }} -t mp-frontend:${{ github.sha }} .
+          docker tag mp-frontend:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
+        working-directory: starter/frontend
+      
+      - name: Configure k8s cluster
+        run: aws eks --region us-east-1 update-kubeconfig --name my-cluster
+
+      - name: Verify kubectl authentication
+        run: kubectl get namespaces
+
+      - name: Deploy to Kubernetes
+        run: |
+          kustomize edit set image frontend=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
+          kustomize build | kubectl apply -f -
+        working-directory: starter/frontend/k8s

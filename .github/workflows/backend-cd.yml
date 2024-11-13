@@ -1,0 +1,119 @@
+name: Backend CD Workflow
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'starter/backend/**'
+  workflow_dispatch:
+    inputs:
+        environment:
+            description: 'Select the environment'
+            required: true
+            default: 'production'
+            type: choice
+            options:
+                - production
+                - staging
+                - development
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pipenv
+          pipenv install --dev
+        working-directory: starter/backend
+      
+      - name: Run lint
+        run: pipenv run lint
+        working-directory: starter/backend
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+    
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pipenv
+          pipenv install --dev
+        working-directory: starter/backend
+
+      - name: Run tests
+        run: pipenv run test
+        working-directory: starter/backend
+
+  build:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    needs: [lint, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and tag Docker image
+        run: |
+          docker build -t mp-backend:${{ github.sha }} .
+          docker tag mp-backend:${{ github.sha }} mp-backend:${{ github.sha }}
+        working-directory: starter/backend
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Push Docker image to ECR
+        run: |
+          docker build -t mp-backend:${{ github.sha }} .
+          docker tag mp-backend:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
+        working-directory: starter/backend
+      
+      - name: Configure k8s cluster
+        run: aws eks --region us-east-1 update-kubeconfig --name my-cluster
+
+      - name: Verify kubectl authentication
+        run: kubectl get namespaces
+
+      - name: Deploy to Kubernetes
+        run: |
+          kustomize edit set image backend=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
+          kustomize build | kubectl apply -f -
+        working-directory: starter/backend/k8s
