@@ -92,14 +92,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend
-          tags: |
-            type=sha
-
       - name: Push Docker image to ECR
         run: |
           docker build --build-arg=REACT_APP_MOVIE_API_URL${{ vars.REACT_APP_MOVIE_API_URL }} -t mp-frontend:${{ github.sha }} .
@@ -115,6 +107,6 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          kustomize edit set image frontend=${{ steps.meta.outputs.tags }}
+          kustomize edit set image frontend=${{ github.sha }}
           kustomize build | kubectl apply -f -
         working-directory: starter/frontend/k8s
