@@ -114,6 +114,6 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          kustomize edit set image backend=${{ github.sha }}
+          kustomize edit set image backend=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend:${{ github.sha }}
           kustomize build | kubectl apply -f -
         working-directory: starter/backend/k8s
