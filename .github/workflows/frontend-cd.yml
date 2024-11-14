@@ -107,6 +107,6 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          kubectl set image deployment/frontend frontend=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }} --record
+          kubectl set image frontend=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-frontend:${{ github.sha }}
           kustomize build | kubectl apply -f -
         working-directory: starter/frontend/k8s
