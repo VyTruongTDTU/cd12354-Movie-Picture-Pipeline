@@ -16,7 +16,6 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 372938655915.dkr.ecr.us-east-1.amazonaws.com/mp-frontend
-          imagePullPolicy: Always
+          image: frontend
           ports:
             - containerPort: 3000
