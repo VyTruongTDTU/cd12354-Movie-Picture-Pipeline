@@ -99,6 +99,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/mp-backend
+          tags: |
+            type=sha
+
       - name: Push Docker image to ECR
         run: |
           docker build -t mp-backend:${{ github.sha }} .
